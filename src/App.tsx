@@ -9,7 +9,26 @@ type Provider=EIP1193Provider & {on?:(event:string,fn:(arg:any)=>void)=>void;rem
 declare global {interface Window {ethereum?:Provider}}
 type Tx={state:'idle'|'signing'|'pending'|'success'|'error',hash?:Hash,message:string};
 const initialTx:Tx={state:'idle',message:''};
-const errorText=(e:unknown)=>{const x=e as {shortMessage?:string;message?:string};return x?.shortMessage||x?.message||String(e)};
+const errorText=(e:unknown)=>{
+  const x=e as {code?:number;shortMessage?:string;message?:string;cause?:{code?:number}};
+  const message=x?.shortMessage||x?.message||String(e);
+  const lower=message.toLowerCase();
+
+  if(x?.code===4001||x?.cause?.code===4001||
+     /user rejected|user denied|user cancelled|user canceled|rejected the request|user refused/.test(lower))
+    return 'Transaction refusée dans le portefeuille.';
+
+  if(/insufficient funds|insufficient balance|exceeds the balance/.test(lower))
+    return 'Solde ETH Sepolia insuffisant pour payer la transaction et les frais réseau.';
+
+  if(/invalid token id|nonexistent token|non-existent token/.test(lower))
+    return "Ce NFT n'existe pas dans cette collection.";
+
+  if(/execution reverted|transaction reverted|transaction annulée par le contrat/.test(lower))
+    return 'Transaction rejetée par le smart contract. Vérifie les conditions de l’opération.';
+
+  return message;
+};
 function App(){
  const [provider,setProvider]=useState<Provider|null>(null),[address,setAddress]=useState<Address|null>(null),[chainId,setChainId]=useState<number|null>(null),[ens,setEns]=useState<string|null>(null),[tx,setTx]=useState<Tx>(initialTx),[refresh,setRefresh]=useState(0),[walletError,setWalletError]=useState('');
  const navigate=useNavigate();
