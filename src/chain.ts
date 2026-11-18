@@ -16,5 +16,23 @@ export const evaluatorAbi = parseAbi(['function submitExercise()','function hasS
 export const pointsAbi = parseAbi(['function balanceOf(address) view returns (uint256)','function decimals() view returns (uint8)']);
 export const claimerAbi = parseAbi(['function maxTokenId() view returns (uint256)','function tokensThatWereClaimed(uint256) view returns (bool)','function claimAToken(uint256,bytes) payable']);
 export const short = (s:string) => s.slice(0,6)+'…'+s.slice(-4);
-export const resolveUri = (s:string) => s.startsWith('ipfs://') ? 'https://ipfs.io/ipfs/'+s.slice(7) : s;
+export const resolveUri = (s: string): string => {
+  if (s.startsWith('ipfs://')) {
+    return 'https://gateway.pinata.cloud/ipfs/' + s.slice(7);
+  }
+
+  try {
+    const url = new URL(s);
+
+    if (url.protocol === 'https:' && url.hostname.endsWith('.ipfs.inbrowser.link')) {
+      const cid = url.hostname.slice(0, -'.ipfs.inbrowser.link'.length);
+
+      return `https://gateway.pinata.cloud/ipfs/${cid}${url.pathname}${url.search}`;
+    }
+  } catch {
+    return s;
+  }
+
+  return s;
+};
 export async function metadata(uri:string) {const ctrl=new AbortController(); const timeout=setTimeout(()=>ctrl.abort(),9000);try {const r=await fetch(resolveUri(uri),{signal:ctrl.signal});if(!r.ok) throw Error('HTTP '+r.status);const data=await r.json();return {...data,image:data.image?resolveUri(data.image):null};} finally {clearTimeout(timeout)}}
